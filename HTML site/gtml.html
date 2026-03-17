@@ -201,6 +201,19 @@ body { background:#f5f5f5; }
     font-weight:bold;
     z-index:10;
 }
+.out-of-stock-badge {
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    background:rgba(0,0,0,0.8);
+    color:white;
+    padding:10px 20px;
+    border-radius:4px;
+    font-size:14px;
+    font-weight:bold;
+    z-index:20;
+}
 .product-img {
     width:100%;
     height:250px;
@@ -235,6 +248,13 @@ body { background:#f5f5f5; }
     color:#999;
     font-size:12px;
 }
+.stock-status {
+    font-size:12px;
+    font-weight:bold;
+    margin-top:4px;
+}
+.stock-low { color:#ff4757; }
+.stock-ok { color:#2ed573; }
 .add-btn {
     width:100%;
     padding:8px;
@@ -247,6 +267,10 @@ body { background:#f5f5f5; }
     margin-top:8px;
 }
 .add-btn:hover { background:#d73211; }
+.add-btn:disabled {
+    background:#999;
+    cursor:not-allowed;
+}
 
 /* Search Results */
 .search-results {
@@ -625,6 +649,7 @@ body { background:#f5f5f5; }
 .stat-card.orange { background:linear-gradient(135deg, #f093fb, #f5576c); }
 .stat-card.green { background:linear-gradient(135deg, #4facfe, #00f2fe); }
 .stat-card.yellow { background:linear-gradient(135deg, #43e97b, #38f9d7); }
+.stat-card.red { background:linear-gradient(135deg, #ff6b6b, #ee4d2d); }
 .stat-card .stat-icon { font-size:28px; margin-bottom:8px; }
 .stat-card .stat-value { font-size:28px; font-weight:bold; }
 .stat-card .stat-label { font-size:12px; opacity:0.9; margin-top:5px; }
@@ -660,6 +685,7 @@ body { background:#f5f5f5; }
     vertical-align:middle;
 }
 .dash-table tr:hover td { background:#fafafa; }
+.dash-table tr.out-of-stock td { background:#fff5f5; }
 .dash-table img {
     width:45px;
     height:45px;
@@ -683,6 +709,8 @@ body { background:#f5f5f5; }
 .status.to-ship { background:#e2e3ff; color:#383d8a; }
 .status.completed { background:#d4edda; color:#155724; }
 .status.to-receive { background:#fff3cd; color:#856404; }
+.status.out-of-stock { background:#fee; color:#c33; }
+.status.active { background:#d4edda; color:#155724; }
 
 /* Action Buttons */
 .action-btn {
@@ -823,6 +851,29 @@ body { background:#f5f5f5; }
 /* Rating stars */
 .stars { color:#ffd700; letter-spacing:2px; }
 
+/* Stock indicator */
+.stock-indicator {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:4px 8px;
+    border-radius:12px;
+    font-size:11px;
+    font-weight:bold;
+}
+.stock-indicator.critical {
+    background:#fee;
+    color:#c33;
+}
+.stock-indicator.low {
+    background:#fff3cd;
+    color:#856404;
+}
+.stock-indicator.good {
+    background:#d4edda;
+    color:#155724;
+}
+
 /* Responsive */
 @media (max-width:768px) {
     .cart-sidebar { width:100%; right:-100%; }
@@ -961,15 +1012,15 @@ body { background:#f5f5f5; }
                 </div>
                 <div class="form-group">
                     <label>Price (₱) *</label>
-                    <input type="number" id="newProdPrice" placeholder="999">
+                    <input type="number" id="newProdPrice" placeholder="999" min="1">
                 </div>
                 <div class="form-group">
                     <label>Original Price (₱)</label>
-                    <input type="number" id="newProdOriginal" placeholder="1499">
+                    <input type="number" id="newProdOriginal" placeholder="1499" min="1">
                 </div>
                 <div class="form-group">
                     <label>Stock *</label>
-                    <input type="number" id="newProdStock" placeholder="100">
+                    <input type="number" id="newProdStock" placeholder="100" min="0">
                 </div>
                 <div class="form-group">
                     <label>Category</label>
@@ -1405,13 +1456,15 @@ function loadData() {
     const savedProducts = localStorage.getItem('sellerProducts');
     if (savedProducts) {
         const custom = JSON.parse(savedProducts);
-        // merge custom products (avoid duplicates)
         custom.forEach(p => {
             if (!allSellerProducts.find(x => x.id === p.id)) {
                 allSellerProducts.push(p);
             }
         });
     }
+    
+    const savedCounter = localStorage.getItem('sellerProductIdCounter');
+    if (savedCounter) sellerProductIdCounter = parseInt(savedCounter);
 }
 
 function saveData() {
@@ -1419,6 +1472,7 @@ function saveData() {
     localStorage.setItem('shopWishlist', JSON.stringify(wishlist));
     const customProducts = allSellerProducts.filter(p => p.id >= 200);
     localStorage.setItem('sellerProducts', JSON.stringify(customProducts));
+    localStorage.setItem('sellerProductIdCounter', sellerProductIdCounter);
 }
 
 // ===================== NAVIGATION =====================
@@ -1484,11 +1538,16 @@ function updateTimer() {
 // ===================== RENDER PRODUCTS =====================
 function renderFlashSale() {
     const grid = document.getElementById('flashGrid');
-    grid.innerHTML = flashSaleProducts.map(p => `
-        <div class="product-card">
-            <span class="sale-badge">FLASH SALE</span>
-            <span class="discount-badge">-${p.discount}</span>
-            <img src="${p.image}" class="product-img">
+    grid.innerHTML = flashSaleProducts.map(p => {
+        const isOutOfStock = p.stock <= 0;
+        return `
+        <div class="product-card" style="${isOutOfStock ? 'opacity:0.6;' : ''}">
+            ${isOutOfStock ? '<span class="sale-badge" style="background:#666;z-index:20;">OUT OF STOCK</span>' : '<span class="sale-badge">FLASH SALE</span>'}
+            ${!isOutOfStock ? `<span class="discount-badge">-${p.discount}</span>` : ''}
+            <div style="position:relative;">
+                <img src="${p.image}" class="product-img" style="${isOutOfStock ? 'filter:grayscale(100%);' : ''}">
+                ${isOutOfStock ? '<div class="out-of-stock-badge">SOLD OUT</div>' : ''}
+            </div>
             <div class="product-info">
                 <div class="product-name">${p.name}</div>
                 <div class="price-row">
@@ -1496,18 +1555,29 @@ function renderFlashSale() {
                     <span class="original-price">₱${p.original}</span>
                 </div>
                 <div class="sold-count">${p.soldStr} sold</div>
-                <button class="add-btn" onclick="addToCart(${p.id})">Add to Cart</button>
+                <div class="stock-status ${p.stock <= 5 && p.stock > 0 ? 'stock-low' : 'stock-ok'}">
+                    ${isOutOfStock ? '❌ Out of Stock' : p.stock <= 5 ? `⚠️ Only ${p.stock} left!` : `✅ In Stock (${p.stock})`}
+                </div>
+                <button class="add-btn" onclick="addToCart(${p.id})" ${isOutOfStock ? 'disabled' : ''}>
+                    ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function renderRegularProducts() {
     const grid = document.getElementById('productsGrid');
     const prods = allSellerProducts.filter(p => !flashSaleProducts.find(f => f.id === p.id));
-    grid.innerHTML = prods.map(p => `
-        <div class="product-card">
-            <img src="${p.image}" class="product-img">
+    grid.innerHTML = prods.map(p => {
+        const isOutOfStock = p.stock <= 0;
+        const isLowStock = p.stock > 0 && p.stock <= 5;
+        return `
+        <div class="product-card" style="${isOutOfStock ? 'opacity:0.6;' : ''}">
+            <div style="position:relative;">
+                <img src="${p.image}" class="product-img" style="${isOutOfStock ? 'filter:grayscale(100%);' : ''}">
+                ${isOutOfStock ? '<div class="out-of-stock-badge">SOLD OUT</div>' : ''}
+            </div>
             <div class="product-info">
                 <div class="product-name">${p.name}</div>
                 <div class="price-row">
@@ -1515,10 +1585,15 @@ function renderRegularProducts() {
                     ${p.original ? `<span class="original-price">₱${p.original}</span>` : ''}
                 </div>
                 <div class="sold-count">${p.soldStr || p.sold || 0} sold</div>
-                <button class="add-btn" onclick="addToCart(${p.id})">Add to Cart</button>
+                <div class="stock-status ${isOutOfStock ? 'stock-low' : isLowStock ? 'stock-low' : 'stock-ok'}">
+                    ${isOutOfStock ? '❌ Out of Stock' : isLowStock ? `⚠️ Only ${p.stock} left!` : `✅ In Stock (${p.stock})`}
+                </div>
+                <button class="add-btn" onclick="addToCart(${p.id})" ${isOutOfStock ? 'disabled style="background:#999;cursor:not-allowed;"' : ''}>
+                    ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 // ===================== SEARCH =====================
@@ -1560,10 +1635,15 @@ function performSearch(query) {
         noResults.style.display = 'none';
         grid.innerHTML = results.map(p => {
             const isFlash = flashSaleProducts.find(f => f.id === p.id);
+            const isOutOfStock = p.stock <= 0;
             return `
-                <div class="product-card">
-                    ${isFlash ? `<span class="sale-badge">FLASH SALE</span><span class="discount-badge">-${p.discount}</span>` : ''}
-                    <img src="${p.image}" class="product-img">
+                <div class="product-card" style="${isOutOfStock ? 'opacity:0.6;' : ''}">
+                    ${isFlash ? `<span class="sale-badge">${isOutOfStock ? 'OUT OF STOCK' : 'FLASH SALE'}</span>` : ''}
+                    ${isFlash && !isOutOfStock ? `<span class="discount-badge">-${p.discount}</span>` : ''}
+                    <div style="position:relative;">
+                        <img src="${p.image}" class="product-img" style="${isOutOfStock ? 'filter:grayscale(100%);' : ''}">
+                        ${isOutOfStock ? '<div class="out-of-stock-badge">SOLD OUT</div>' : ''}
+                    </div>
                     <div class="product-info">
                         <div class="product-name">${p.name}</div>
                         <div class="price-row">
@@ -1571,7 +1651,12 @@ function performSearch(query) {
                             ${p.original ? `<span class="original-price">₱${p.original}</span>` : ''}
                         </div>
                         <div class="sold-count">${p.soldStr || p.sold || 0} sold</div>
-                        <button class="add-btn" onclick="addToCart(${p.id})">Add to Cart</button>
+                        <div class="stock-status ${p.stock <= 5 ? 'stock-low' : 'stock-ok'}">
+                            ${isOutOfStock ? '❌ Out of Stock' : p.stock <= 5 ? `⚠️ Only ${p.stock} left!` : `✅ In Stock (${p.stock})`}
+                        </div>
+                        <button class="add-btn" onclick="addToCart(${p.id})" ${isOutOfStock ? 'disabled style="background:#999;cursor:not-allowed;"' : ''}>
+                            ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                        </button>
                     </div>
                 </div>
             `;
@@ -1590,14 +1675,28 @@ function clearSearch() {
 function addToCart(id) {
     const product = allSellerProducts.find(p => p.id === id);
     if (!product) return;
+    
+    // Check if product is out of stock
+    if (product.stock <= 0) {
+        showToast('❌ Product is out of stock!');
+        return;
+    }
+    
+    // Check if enough stock available
     const existing = cart.find(item => item.id === id);
+    const currentQty = existing ? existing.quantity : 0;
+    if (currentQty + 1 > product.stock) {
+        showToast(`⚠️ Only ${product.stock} items available!`);
+        return;
+    }
+    
     if (existing) {
         existing.quantity++;
     } else {
         cart.push({...product, quantity:1});
     }
     updateCart();
-    showToast('Added to cart!');
+    showToast('✅ Added to cart!');
 }
 
 function removeFromCart(id) {
@@ -1607,10 +1706,18 @@ function removeFromCart(id) {
 
 function updateCartQty(id, delta) {
     const item = cart.find(i => i.id === id);
-    if (item) {
-        item.quantity += delta;
-        if (item.quantity <= 0) removeFromCart(id);
-        else updateCart();
+    const product = allSellerProducts.find(p => p.id === id);
+    
+    if (item && product) {
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) {
+            removeFromCart(id);
+        } else if (newQty > product.stock) {
+            showToast(`⚠️ Only ${product.stock} items available!`);
+        } else {
+            item.quantity = newQty;
+            updateCart();
+        }
     }
 }
 
@@ -1624,7 +1731,10 @@ function updateCart() {
     if (cart.length === 0) {
         itemsDiv.innerHTML = '<div class="empty-cart">Your cart is empty</div>';
     } else {
-        itemsDiv.innerHTML = cart.map(item => `
+        itemsDiv.innerHTML = cart.map(item => {
+            const product = allSellerProducts.find(p => p.id === item.id);
+            const maxStock = product ? product.stock : item.quantity;
+            return `
             <div class="cart-item">
                 <img src="${item.image}">
                 <div style="flex:1;">
@@ -1633,13 +1743,13 @@ function updateCart() {
                     <div style="display:flex;align-items:center;gap:8px;">
                         <button onclick="updateCartQty(${item.id},-1)" style="width:25px;height:25px;border:1px solid #ddd;background:white;cursor:pointer;border-radius:4px;">-</button>
                         <span>${item.quantity}</span>
-                        <button onclick="updateCartQty(${item.id},1)" style="width:25px;height:25px;border:1px solid #ddd;background:white;cursor:pointer;border-radius:4px;">+</button>
+                        <button onclick="updateCartQty(${item.id},1)" style="width:25px;height:25px;border:1px solid #ddd;background:white;cursor:pointer;border-radius:4px;" ${item.quantity >= maxStock ? 'disabled' : ''}>+</button>
                     </div>
                     <button class="remove-btn" onclick="removeFromCart(${item.id})">Remove</button>
                 </div>
                 <div style="font-weight:bold;color:#333;">₱${(item.price * item.quantity).toLocaleString()}</div>
             </div>
-        `).join('');
+        `}).join('');
     }
     
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -1654,7 +1764,20 @@ function toggleCart() {
 
 // ===================== CHECKOUT =====================
 function showCheckout() {
-    if (cart.length === 0) { alert('Your cart is empty!'); return; }
+    if (cart.length === 0) { 
+        showToast('❌ Your cart is empty!'); 
+        return; 
+    }
+    
+    // Validate stock before checkout
+    for (let item of cart) {
+        const product = allSellerProducts.find(p => p.id === item.id);
+        if (!product || product.stock < item.quantity) {
+            showToast(`❌ "${item.name}" is no longer available in requested quantity!`);
+            return;
+        }
+    }
+    
     // Auto-fill if logged in
     if (currentUser) {
         const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -1679,25 +1802,36 @@ function hideCheckout() {
 }
 
 function placeOrder() {
-    const name = document.getElementById('checkoutName').value;
-    const phone = document.getElementById('checkoutPhone').value;
-    const email = document.getElementById('checkoutEmail').value;
-    const address = document.getElementById('checkoutAddress').value;
-    const city = document.getElementById('checkoutCity').value;
-    const zip = document.getElementById('checkoutZip').value;
+    const name = document.getElementById('checkoutName').value.trim();
+    const phone = document.getElementById('checkoutPhone').value.trim();
+    const email = document.getElementById('checkoutEmail').value.trim();
+    const address = document.getElementById('checkoutAddress').value.trim();
+    const city = document.getElementById('checkoutCity').value.trim();
+    const zip = document.getElementById('checkoutZip').value.trim();
     const payment = document.querySelector('input[name="payment"]:checked').value;
     
     if (!name || !phone || !email || !address || !city || !zip) {
-        alert('Please fill in all required fields!'); return;
+        showToast('❌ Please fill in all required fields!'); 
+        return;
     }
     
     if (payment === 'card') {
-        const cardNum = document.getElementById('cardNumber').value;
-        const expiry = document.getElementById('cardExpiry').value;
-        const cvv = document.getElementById('cardCvv').value;
-        const cardNameVal = document.getElementById('cardName').value;
+        const cardNum = document.getElementById('cardNumber').value.trim();
+        const expiry = document.getElementById('cardExpiry').value.trim();
+        const cvv = document.getElementById('cardCvv').value.trim();
+        const cardNameVal = document.getElementById('cardName').value.trim();
         if (!cardNum || !expiry || !cvv || !cardNameVal) {
-            alert('Please fill in all card details!'); return;
+            showToast('❌ Please fill in all card details!'); 
+            return;
+        }
+    }
+    
+    // Final stock validation
+    for (let item of cart) {
+        const product = allSellerProducts.find(p => p.id === item.id);
+        if (!product || product.stock < item.quantity) {
+            showToast(`❌ "${item.name}" is out of stock or insufficient quantity!`);
+            return;
         }
     }
     
@@ -1722,7 +1856,7 @@ function placeOrder() {
     
     sellerOrders.push(order);
     
-    // Update sold counts
+    // Update sold counts and deduct stock
     cart.forEach(item => {
         const prod = allSellerProducts.find(p => p.id === item.id);
         if (prod) {
@@ -1734,7 +1868,7 @@ function placeOrder() {
     
     saveData();
     
-    alert(`✅ Order Placed Successfully!\n\nOrder ID: ${order.id}\n👤 ${name}\n📱 ${phone}\n📧 ${email}\n🏠 ${address}, ${city} ${zip}\n💳 ${paymentText}\n💰 Total: ₱${total.toLocaleString()}\n\nThank you for shopping!`);
+    showToast(`✅ Order Placed! ID: ${order.id}`);
     
     cart = [];
     updateCart();
@@ -1756,25 +1890,37 @@ function switchModal(closeId, openId) { closeModal(closeId); openModal(openId); 
 
 function handleSignup(e) {
     e.preventDefault();
-    const firstName = document.getElementById('signupFirstName').value;
-    const lastName = document.getElementById('signupLastName').value;
-    const email = document.getElementById('signupEmail').value;
-    const phone = document.getElementById('signupPhone').value;
+    const firstName = document.getElementById('signupFirstName').value.trim();
+    const lastName = document.getElementById('signupLastName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const phone = document.getElementById('signupPhone').value.trim();
     const password = document.getElementById('signupPassword').value;
     const confirmPassword = document.getElementById('signupConfirmPassword').value;
     const role = document.getElementById('signupRole').value;
-    const shopName = document.getElementById('signupShopName').value;
-    const address = document.getElementById('signupAddress').value;
-    const city = document.getElementById('signupCity').value;
+    const shopName = document.getElementById('signupShopName').value.trim();
+    const address = document.getElementById('signupAddress').value.trim();
+    const city = document.getElementById('signupCity').value.trim();
     const birthday = document.getElementById('signupBirthday').value;
     const gender = document.getElementById('signupGender').value;
     
-    if (password !== confirmPassword) { alert('Passwords do not match!'); return; }
-    if (password.length < 6) { alert('Password must be at least 6 characters!'); return; }
-    if (role === 'seller' && !shopName) { alert('Please enter a shop name!'); return; }
+    if (password !== confirmPassword) { 
+        showToast('❌ Passwords do not match!'); 
+        return; 
+    }
+    if (password.length < 6) { 
+        showToast('❌ Password must be at least 6 characters!'); 
+        return; 
+    }
+    if (role === 'seller' && !shopName) { 
+        showToast('❌ Please enter a shop name!'); 
+        return; 
+    }
     
     const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.find(u => u.email === email)) { alert('Email already registered!'); return; }
+    if (users.find(u => u.email === email)) { 
+        showToast('❌ Email already registered!'); 
+        return; 
+    }
     
     const userData = {
         firstName, lastName, fullName: firstName + ' ' + lastName,
@@ -1791,13 +1937,13 @@ function handleSignup(e) {
     
     updateAuthUI();
     closeModal('signupModal');
-    showToast('Account created successfully!');
+    showToast('✅ Account created successfully!');
     e.target.reset();
 }
 
 function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('loginEmail').value;
+    const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     
     const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -1808,9 +1954,9 @@ function handleLogin(e) {
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         updateAuthUI();
         closeModal('loginModal');
-        showToast('Welcome back, ' + user.firstName + '!');
+        showToast('✅ Welcome back, ' + user.firstName + '!');
     } else {
-        alert('Invalid email or password!');
+        showToast('❌ Invalid email or password!');
     }
 }
 
@@ -1874,8 +2020,9 @@ function switchSellerTab(tab, btn) {
 function renderSellerOverview() {
     const totalRevenue = sellerOrders.filter(o => o.status !== 'cancelled').reduce((s,o) => s + o.total, 0);
     const totalOrders = sellerOrders.length;
-    const totalProducts = allSellerProducts.length;
+    const totalProducts = allSellerProducts.filter(p => p.id >= 200).length;
     const pendingOrders = sellerOrders.filter(o => o.status === 'pending' || o.status === 'to-ship').length;
+    const outOfStockCount = allSellerProducts.filter(p => p.id >= 200 && p.stock <= 0).length;
     
     document.getElementById('sellerStats').innerHTML = `
         <div class="stat-card">
@@ -1891,12 +2038,12 @@ function renderSellerOverview() {
         <div class="stat-card green">
             <div class="stat-icon">👕</div>
             <div class="stat-value">${totalProducts}</div>
-            <div class="stat-label">Products Listed</div>
+            <div class="stat-label">My Products</div>
         </div>
-        <div class="stat-card yellow">
-            <div class="stat-icon">⏳</div>
-            <div class="stat-value">${pendingOrders}</div>
-            <div class="stat-label">Pending Orders</div>
+        <div class="stat-card ${outOfStockCount > 0 ? 'red' : 'yellow'}">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-value">${outOfStockCount}</div>
+            <div class="stat-label">Out of Stock</div>
         </div>
     `;
     
@@ -1940,23 +2087,46 @@ function renderSellerOverview() {
 }
 
 function renderSellerProducts() {
-    document.getElementById('sellerProdCount').textContent = allSellerProducts.length;
+    const myProducts = allSellerProducts.filter(p => p.id >= 200);
+    document.getElementById('sellerProdCount').textContent = myProducts.length;
+    
     const tbody = document.querySelector('#sellerProductsTable tbody');
-    tbody.innerHTML = allSellerProducts.map(p => {
+    if (myProducts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:30px;">No products yet. Click "Add New Product" to get started!</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = myProducts.map(p => {
         const revenue = sellerOrders.filter(o => o.status !== 'cancelled')
             .reduce((s,o) => s + o.items.filter(i => i.id === p.id).reduce((ss,i) => ss + i.price*i.quantity, 0), 0);
+        
+        const isOutOfStock = p.stock <= 0;
+        const isLowStock = p.stock > 0 && p.stock <= 5;
+        
         return `
-            <tr>
+            <tr class="${isOutOfStock ? 'out-of-stock' : ''}">
                 <td><img src="${p.image}"></td>
-                <td><strong>${p.name}</strong><br><small style="color:#999;">${p.category || ''}</small></td>
+                <td>
+                    <strong>${p.name}</strong>
+                    ${isOutOfStock ? '<br><span style="color:#ff4757;font-size:11px;">⚠️ OUT OF STOCK</span>' : ''}
+                    <br><small style="color:#999;">${p.category || ''}</small>
+                </td>
                 <td>₱${p.price}${p.original ? `<br><small style="text-decoration:line-through;color:#999;">₱${p.original}</small>` : ''}</td>
-                <td><span style="color:${p.stock <= 10 ? '#ff4757' : '#2ed573'};font-weight:bold;">${p.stock || 0}</span></td>
+                <td>
+                    <span class="stock-indicator ${isOutOfStock ? 'critical' : isLowStock ? 'low' : 'good'}">
+                        ${isOutOfStock ? '❌ 0' : isLowStock ? `⚠️ ${p.stock}` : `✅ ${p.stock}`}
+                    </span>
+                </td>
                 <td>${p.sold || 0}</td>
                 <td><strong>₱${revenue.toLocaleString()}</strong></td>
-                <td><span class="status ${p.stock > 0 ? 'delivered' : 'cancelled'}">${p.stock > 0 ? 'ACTIVE' : 'OUT OF STOCK'}</span></td>
+                <td>
+                    <span class="status ${isOutOfStock ? 'out-of-stock' : 'active'}">
+                        ${isOutOfStock ? 'OUT OF STOCK' : 'ACTIVE'}
+                    </span>
+                </td>
                 <td>
                     <button class="action-btn edit" onclick="editProduct(${p.id})">✏️ Edit</button>
-                    ${p.id >= 200 ? `<button class="action-btn delete" onclick="deleteProduct(${p.id})">🗑️</button>` : ''}
+                    <button class="action-btn delete" onclick="deleteProduct(${p.id})">🗑️ Delete</button>
                 </td>
             </tr>
         `;
@@ -1968,15 +2138,17 @@ function toggleAddProduct() {
 }
 
 function saveNewProduct() {
-    const name = document.getElementById('newProdName').value;
+    const name = document.getElementById('newProdName').value.trim();
     const price = parseInt(document.getElementById('newProdPrice').value);
     const original = parseInt(document.getElementById('newProdOriginal').value) || null;
     const stock = parseInt(document.getElementById('newProdStock').value);
     const category = document.getElementById('newProdCategory').value;
-    const image = document.getElementById('newProdImage').value || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400';
-    const description = document.getElementById('newProdDesc').value;
+    const image = document.getElementById('newProdImage').value.trim() || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400';
+    const description = document.getElementById('newProdDesc').value.trim();
     
-    if (!name || !price || !stock) { alert('Please fill in required fields!'); return; }
+    if (!name) { showToast('❌ Product name is required!'); return; }
+    if (!price || price <= 0) { showToast('❌ Valid price is required!'); return; }
+    if (isNaN(stock) || stock < 0) { showToast('❌ Valid stock quantity is required!'); return; }
     
     sellerProductIdCounter++;
     const newProd = {
@@ -1991,7 +2163,7 @@ function saveNewProduct() {
     renderSellerProducts();
     renderRegularProducts();
     toggleAddProduct();
-    showToast('Product added successfully!');
+    showToast('✅ Product added successfully!');
     
     ['newProdName','newProdPrice','newProdOriginal','newProdStock','newProdImage','newProdDesc'].forEach(id => {
         document.getElementById(id).value = '';
@@ -2001,26 +2173,37 @@ function saveNewProduct() {
 function editProduct(id) {
     const prod = allSellerProducts.find(p => p.id === id);
     if (!prod) return;
+    
     const newPrice = prompt('Enter new price for "' + prod.name + '":', prod.price);
-    if (newPrice && !isNaN(newPrice)) {
+    if (newPrice === null) return;
+    if (newPrice && !isNaN(newPrice) && newPrice > 0) {
         prod.price = parseInt(newPrice);
-        const newStock = prompt('Enter new stock:', prod.stock);
-        if (newStock && !isNaN(newStock)) prod.stock = parseInt(newStock);
-        saveData();
-        renderSellerProducts();
-        renderFlashSale();
-        renderRegularProducts();
-        showToast('Product updated!');
     }
+    
+    const newStock = prompt('Enter new stock:', prod.stock);
+    if (newStock === null) return;
+    if (newStock !== '' && !isNaN(newStock) && newStock >= 0) {
+        prod.stock = parseInt(newStock);
+    }
+    
+    saveData();
+    renderSellerProducts();
+    renderFlashSale();
+    renderRegularProducts();
+    showToast('✅ Product updated!');
 }
 
 function deleteProduct(id) {
-    if (!confirm('Delete this product?')) return;
+    const prod = allSellerProducts.find(p => p.id === id);
+    if (!prod) return;
+    
+    if (!confirm(`Are you sure you want to delete "${prod.name}"? This action cannot be undone.`)) return;
+    
     allSellerProducts = allSellerProducts.filter(p => p.id !== id);
     saveData();
     renderSellerProducts();
     renderRegularProducts();
-    showToast('Product deleted!');
+    showToast('✅ Product deleted!');
 }
 
 function renderSellerOrders() {
@@ -2036,7 +2219,7 @@ function renderSellerOrders() {
     
     tbody.innerHTML = [...filtered].reverse().map(o => {
         let actions = '';
-        if (o.status === 'pending') actions = `<button class="action-btn ship" onclick="updateOrderStatus('${o.id}','to-ship')">✅ Confirm</button><button class="action-btn cancel" onclick="updateOrderStatus('${o.id}','cancelled')">❌</button>`;
+        if (o.status === 'pending') actions = `<button class="action-btn ship" onclick="updateOrderStatus('${o.id}','to-ship')">✅ Confirm</button><button class="action-btn cancel" onclick="updateOrderStatus('${o.id}','cancelled')">❌ Cancel</button>`;
         if (o.status === 'to-ship') actions = `<button class="action-btn ship" onclick="updateOrderStatus('${o.id}','shipped')">🚚 Ship</button>`;
         if (o.status === 'shipped') actions = `<button class="action-btn confirm" onclick="updateOrderStatus('${o.id}','delivered')">📦 Delivered</button>`;
         
@@ -2057,13 +2240,24 @@ function renderSellerOrders() {
 
 function updateOrderStatus(orderId, newStatus) {
     const order = sellerOrders.find(o => o.id === orderId);
-    if (order) {
-        order.status = newStatus;
-        saveData();
-        renderSellerOrders();
-        renderSellerOverview();
-        showToast(`Order ${orderId} → ${newStatus.replace('-',' ').toUpperCase()}`);
+    if (!order) return;
+    
+    // If cancelling, restore stock
+    if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+        order.items.forEach(item => {
+            const prod = allSellerProducts.find(p => p.id === item.id);
+            if (prod) {
+                prod.stock = (prod.stock || 0) + item.quantity;
+            }
+        });
+        showToast('ℹ️ Stock restored for cancelled order');
     }
+    
+    order.status = newStatus;
+    saveData();
+    renderSellerOrders();
+    renderSellerOverview();
+    showToast(`✅ Order ${orderId} → ${newStatus.replace('-',' ').toUpperCase()}`);
 }
 
 function renderSellerAnalytics() {
@@ -2072,6 +2266,9 @@ function renderSellerAnalytics() {
     const totalItems = validOrders.reduce((s,o) => s + o.items.reduce((ss,i) => ss + i.quantity, 0), 0);
     const avgOrder = validOrders.length > 0 ? Math.round(totalRevenue / validOrders.length) : 0;
     const conversionRate = sellerOrders.length > 0 ? Math.round((validOrders.length / sellerOrders.length)*100) : 0;
+    
+    const myProducts = allSellerProducts.filter(p => p.id >= 200);
+    const outOfStockCount = myProducts.filter(p => p.stock <= 0).length;
     
     document.getElementById('analyticsStats').innerHTML = `
         <div class="stat-card">
@@ -2089,10 +2286,10 @@ function renderSellerAnalytics() {
             <div class="stat-value">₱${avgOrder.toLocaleString()}</div>
             <div class="stat-label">Avg. Order Value</div>
         </div>
-        <div class="stat-card yellow">
-            <div class="stat-icon">✅</div>
-            <div class="stat-value">${conversionRate}%</div>
-            <div class="stat-label">Completion Rate</div>
+        <div class="stat-card ${outOfStockCount > 0 ? 'red' : 'yellow'}">
+            <div class="stat-icon">📦</div>
+            <div class="stat-value">${outOfStockCount}</div>
+            <div class="stat-label">Out of Stock Items</div>
         </div>
     `;
     
@@ -2166,7 +2363,6 @@ function switchBuyerTab(tab, btn) {
 function renderBuyerDashboard() {
     if (!currentUser) { openModal('loginModal'); return; }
     
-    // Profile card
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const u = users.find(x => x.email === currentUser.email);
     
@@ -2194,7 +2390,6 @@ function renderBuyerOrders() {
     
     document.getElementById('buyerOrderCount').textContent = filtered.length;
     
-    // Stats
     const totalSpent = myOrders.filter(o => o.status !== 'cancelled').reduce((s,o) => s + o.total, 0);
     const completedOrders = myOrders.filter(o => o.status === 'delivered' || o.status === 'completed').length;
     
@@ -2268,10 +2463,19 @@ function buyerCancelOrder(orderId) {
     if (!confirm('Cancel this order?')) return;
     const order = sellerOrders.find(o => o.id === orderId);
     if (order && order.status === 'pending') {
+        // Restore stock
+        order.items.forEach(item => {
+            const prod = allSellerProducts.find(p => p.id === item.id);
+            if (prod) {
+                prod.stock = (prod.stock || 0) + item.quantity;
+            }
+        });
+        
         order.status = 'cancelled';
         saveData();
         renderBuyerOrders();
-        showToast('Order cancelled');
+        renderSellerOverview();
+        showToast('✅ Order cancelled and stock restored');
     }
 }
 
@@ -2281,7 +2485,7 @@ function confirmReceived(orderId) {
         order.status = 'completed';
         saveData();
         renderBuyerOrders();
-        showToast('Order completed! Thank you!');
+        showToast('✅ Order completed! Thank you!');
     }
 }
 
@@ -2294,18 +2498,44 @@ function rateOrder(orderId) {
             order.rating = parseInt(rating);
             saveData();
             renderBuyerOrders();
-            showToast('Thanks for your rating! ⭐'.repeat(parseInt(rating)));
+            showToast('⭐'.repeat(parseInt(rating)) + ' Thanks for your rating!');
         }
     }
 }
 
 function reorder(orderId) {
     const order = sellerOrders.find(o => o.id === orderId);
-    if (order) {
-        order.items.forEach(item => {
-            addToCart(item.id);
-        });
-        showToast('Items added to cart!');
+    if (!order) return;
+    
+    let added = 0;
+    let failed = 0;
+    
+    order.items.forEach(item => {
+        const product = allSellerProducts.find(p => p.id === item.id);
+        if (product && product.stock >= item.quantity) {
+            const existing = cart.find(i => i.id === item.id);
+            if (existing) {
+                if (existing.quantity + item.quantity <= product.stock) {
+                    existing.quantity += item.quantity;
+                    added++;
+                } else {
+                    failed++;
+                }
+            } else {
+                cart.push({...product, quantity: item.quantity});
+                added++;
+            }
+        } else {
+            failed++;
+        }
+    });
+    
+    updateCart();
+    if (added > 0) {
+        showToast(`✅ ${added} items added to cart!`);
+    }
+    if (failed > 0) {
+        showToast(`❌ ${failed} items unavailable (out of stock)`);
     }
 }
 
@@ -2314,10 +2544,10 @@ function toggleWishlist(id) {
     const idx = wishlist.indexOf(id);
     if (idx === -1) {
         wishlist.push(id);
-        showToast('Added to wishlist ❤️');
+        showToast('❤️ Added to wishlist');
     } else {
         wishlist.splice(idx, 1);
-        showToast('Removed from wishlist');
+        showToast('💔 Removed from wishlist');
     }
     saveData();
     renderWishlist();
@@ -2334,19 +2564,29 @@ function renderWishlist() {
         noWish.style.display = 'block';
     } else {
         noWish.style.display = 'none';
-        grid.innerHTML = items.map(p => `
-            <div class="product-card">
-                <img src="${p.image}" class="product-img">
+        grid.innerHTML = items.map(p => {
+            const isOutOfStock = p.stock <= 0;
+            return `
+            <div class="product-card" style="${isOutOfStock ? 'opacity:0.6;' : ''}">
+                <div style="position:relative;">
+                    <img src="${p.image}" class="product-img" style="${isOutOfStock ? 'filter:grayscale(100%);' : ''}">
+                    ${isOutOfStock ? '<div class="out-of-stock-badge">SOLD OUT</div>' : ''}
+                </div>
                 <div class="product-info">
                     <div class="product-name">${p.name}</div>
                     <div class="price-row">
                         <span class="current-price">₱${p.price}</span>
                     </div>
-                    <button class="add-btn" onclick="addToCart(${p.id})">Add to Cart</button>
+                    <div class="stock-status ${p.stock <= 5 ? 'stock-low' : 'stock-ok'}">
+                        ${isOutOfStock ? '❌ Out of Stock' : `✅ In Stock (${p.stock})`}
+                    </div>
+                    <button class="add-btn" onclick="addToCart(${p.id})" ${isOutOfStock ? 'disabled style="background:#999;"' : ''}>
+                        ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                    </button>
                     <button class="add-btn" style="background:#ff4757;margin-top:5px;" onclick="toggleWishlist(${p.id})">Remove ❤️</button>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     }
 }
 
@@ -2410,12 +2650,12 @@ function saveProfile() {
     const idx = users.findIndex(x => x.email === currentUser.email);
     if (idx === -1) return;
     
-    users[idx].firstName = document.getElementById('profFirstName').value;
-    users[idx].lastName = document.getElementById('profLastName').value;
+    users[idx].firstName = document.getElementById('profFirstName').value.trim();
+    users[idx].lastName = document.getElementById('profLastName').value.trim();
     users[idx].fullName = users[idx].firstName + ' ' + users[idx].lastName;
-    users[idx].phone = document.getElementById('profPhone').value;
-    users[idx].address = document.getElementById('profAddress').value;
-    users[idx].city = document.getElementById('profCity').value;
+    users[idx].phone = document.getElementById('profPhone').value.trim();
+    users[idx].address = document.getElementById('profAddress').value.trim();
+    users[idx].city = document.getElementById('profCity').value.trim();
     users[idx].birthday = document.getElementById('profBirthday').value;
     users[idx].gender = document.getElementById('profGender').value;
     
@@ -2426,7 +2666,7 @@ function saveProfile() {
     
     updateAuthUI();
     renderBuyerDashboard();
-    showToast('Profile updated!');
+    showToast('✅ Profile updated!');
 }
 
 // ===================== UTILITIES =====================
@@ -2434,7 +2674,7 @@ function showToast(msg) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2000);
+    setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 window.onclick = function(e) {
