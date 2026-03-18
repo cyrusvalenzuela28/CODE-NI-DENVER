@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -887,6 +888,7 @@ body { background:#f5f5f5; }
     .dash-table th, .dash-table td { padding:8px 5px; }
 }
 </style>
+<base target="_blank">
 </head>
 
 <body>
@@ -1351,9 +1353,7 @@ body { background:#f5f5f5; }
                     <option value="seller">🏪 Seller</option>
                 </select>
             </div>
-            <div class="form-group" id="shopNameGroup" style="display:none;">
-                <input type="text" id="signupShopName" placeholder="Shop Name (for sellers)">
-            </div>
+            
             <div class="form-group">
                 <input type="password" id="signupPassword" placeholder="Password *" required minlength="6">
                 <small>Minimum 6 characters</small>
@@ -1386,7 +1386,7 @@ body { background:#f5f5f5; }
                     I agree to the Terms and Conditions *
                 </label>
             </div>
-            <button type="submit" class="submit-btn">CREATE ACCOUNT</button>
+            <button type="submit" class="submit-btn" id="signupSubmitBtn">CREATE ACCOUNT</button>
         </form>
         <div class="switch-text">
             Already have an account? <a onclick="switchModal('signupModal', 'loginModal')">Login</a>
@@ -1400,11 +1400,11 @@ body { background:#f5f5f5; }
 // ===================== DATA =====================
 const flashSaleProducts = [
     { id:101, name:"Oversized Street Tee", price:499, original:799, image:"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400", sold:1200, soldStr:"1.2k", discount:"37%", category:"tops", stock:50, description:"Trendy oversized tee for streetwear lovers" },
-    { id:102, name:"Korean Style Hoodie", price:999, original:1499, image:"https://images.unsplash.com/photo-1554568218-0f1715e72254?w=400", sold:856, soldStr:"856", discount:"33%", category:"outerwear", stock:30, description:"Warm and stylish Korean-inspired hoodie" },
-    { id:103, name:"Y2K Cargo Pants", price:899, original:1299, image:"https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400", sold:2300, soldStr:"2.3k", discount:"31%", category:"bottoms", stock:45, description:"Retro Y2K style cargo pants" },
-    { id:104, name:"Denim Jacket", price:1399, original:1899, image:"https://images.unsplash.com/photo-1520975916090-3105956dac38?w=400", sold:567, soldStr:"567", discount:"26%", category:"outerwear", stock:25, description:"Classic denim jacket for all seasons" },
-    { id:105, name:"Bomber Jacket", price:1699, original:2199, image:"https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=400", sold:432, soldStr:"432", discount:"23%", category:"outerwear", stock:20, description:"Premium bomber jacket" },
-    { id:106, name:"Summer Floral Dress", price:799, original:1099, image:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400", sold:2100, soldStr:"2.1k", discount:"27%", category:"dresses", stock:60, description:"Beautiful floral dress for summer" }
+    { id:102, name:"Korean Style Hoodie", price:999, original:1499, image:"https://down-ph.img.susercontent.com/file/ph-11134208-7r98u-ltkwd3dg8oeb0a", sold:856, soldStr:"856", discount:"33%", category:"outerwear", stock:30, description:"Warm and stylish Korean-inspired hoodie" },
+    { id:103, name:"Y2K Cargo Pants", price:899, original:1299, image:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_voFNuFpdRBx7mDvsEObIO0bGHcBxbLVNig&s", sold:2300, soldStr:"2.3k", discount:"31%", category:"bottoms", stock:45, description:"Retro Y2K style cargo pants" },
+    { id:104, name:"Denim Jacket", price:1399, original:1899, image:"https://m.media-amazon.com/images/I/91mkkg7dORL._AC_SL1000__.jpg", sold:567, soldStr:"567", discount:"26%", category:"outerwear", stock:25, description:"Classic denim jacket for all seasons" },
+    { id:105, name:"Bomber Jacket", price:1699, original:2199, image:"https://www.craftclothing.ph/cdn/shop/files/BomberJacketNo.1-Design3-Frnt_3897de1a-71df-46be-a368-a2f40861493c_600x.png?v=1740990232", sold:432, soldStr:"432", discount:"23%", category:"outerwear", stock:20, description:"Premium bomber jacket" },
+    { id:106, name:"Summer Floral Dress", price:799, original:1099, image:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5IS2MWSIIlijSMEsJwFBlf5hTYwxtZOx9Vg&s", sold:2100, soldStr:"2.1k", discount:"27%", category:"dresses", stock:60, description:"Beautiful floral dress for summer" }
 ];
 
 const regularProducts = [
@@ -1413,7 +1413,7 @@ const regularProducts = [
     { id:3, name:"Classic Black Jeans", price:1199, image:"https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400", sold:1800, soldStr:"1.8k", category:"bottoms", stock:40, description:"Classic black jeans" },
     { id:4, name:"Elegant Black Dress", price:1499, image:"https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400", sold:1500, soldStr:"1.5k", category:"dresses", stock:35, description:"Elegant black dress for special occasions" },
     { id:5, name:"Streetwear Cap", price:499, image:"https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=400", sold:4200, soldStr:"4.2k", category:"accessories", stock:100, description:"Trendy streetwear cap" },
-    { id:6, name:"Trendy Shoulder Bag", price:899, image:"https://images.unsplash.com/photo-1520974735194-1d3a9c7f63b5?w=400", sold:892, soldStr:"892", category:"accessories", stock:45, description:"Fashionable shoulder bag" }
+    { id:6, name:"Trendy Shoulder Bag", price:899, image:"https://i5.walmartimages.com/asr/8a37874d-c962-46a5-b8da-890c76d14525.4065fd044e653ab785d3010dd63a75bd.jpeg", sold:892, soldStr:"892", category:"accessories", stock:45, description:"Fashionable shoulder bag" }
 ];
 
 // ===================== STATE =====================
@@ -1442,7 +1442,7 @@ window.onload = function() {
     });
     
     document.getElementById('signupRole').addEventListener('change', function() {
-        document.getElementById('shopNameGroup').style.display = this.value === 'seller' ? 'block' : 'none';
+        
     });
 };
 
@@ -1504,35 +1504,59 @@ function showBuyerDashboard() {
 
 // ===================== FLASH SALE TIMER =====================
 function initFlashSaleTimer() {
+    // Check if there's a saved end time in localStorage
     const savedEndTime = localStorage.getItem('flashSaleEndTime');
+    const now = Date.now();
+
     if (savedEndTime) {
         flashSaleEndTime = parseInt(savedEndTime);
-        if (flashSaleEndTime < Date.now()) {
-            flashSaleEndTime = Date.now() + (24 * 60 * 60 * 1000);
+        // If the saved time has passed, reset to 24 hours from now
+        if (flashSaleEndTime < now) {
+            flashSaleEndTime = now + (24 * 60 * 60 * 1000);
             localStorage.setItem('flashSaleEndTime', flashSaleEndTime);
         }
     } else {
-        flashSaleEndTime = Date.now() + (24 * 60 * 60 * 1000);
+        // No saved time, set to 24 hours from now
+        flashSaleEndTime = now + (24 * 60 * 60 * 1000);
         localStorage.setItem('flashSaleEndTime', flashSaleEndTime);
     }
+
+    // Update timer immediately
     updateTimer();
+
+    // Update timer every second
     setInterval(updateTimer, 1000);
+
+    console.log('Flash sale timer initialized. Ends at:', new Date(flashSaleEndTime).toLocaleString());
 }
 
 function updateTimer() {
     const now = Date.now();
     let diff = flashSaleEndTime - now;
+
+    // If timer has expired, reset to 24 hours from now
     if (diff <= 0) {
-        flashSaleEndTime = Date.now() + (24 * 60 * 60 * 1000);
+        flashSaleEndTime = now + (24 * 60 * 60 * 1000);
         localStorage.setItem('flashSaleEndTime', flashSaleEndTime);
         diff = 24 * 60 * 60 * 1000;
+        console.log('Flash sale reset! New end time:', new Date(flashSaleEndTime).toLocaleString());
     }
+
+    // Calculate time components
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-    document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+
+    // Update the display with padded numbers
+    const hoursEl = document.getElementById('hours');
+    const minutesEl = document.getElementById('minutes');
+    const secondsEl = document.getElementById('seconds');
+
+    if (hoursEl && minutesEl && secondsEl) {
+        hoursEl.textContent = hours.toString().padStart(2, '0');
+        minutesEl.textContent = minutes.toString().padStart(2, '0');
+        secondsEl.textContent = seconds.toString().padStart(2, '0');
+    }
 }
 
 // ===================== RENDER PRODUCTS =====================
@@ -1897,7 +1921,7 @@ function handleSignup(e) {
     const password = document.getElementById('signupPassword').value;
     const confirmPassword = document.getElementById('signupConfirmPassword').value;
     const role = document.getElementById('signupRole').value;
-    const shopName = document.getElementById('signupShopName').value.trim();
+    // Shop name auto-generated for sellers
     const address = document.getElementById('signupAddress').value.trim();
     const city = document.getElementById('signupCity').value.trim();
     const birthday = document.getElementById('signupBirthday').value;
@@ -1911,10 +1935,7 @@ function handleSignup(e) {
         showToast('❌ Password must be at least 6 characters!'); 
         return; 
     }
-    if (role === 'seller' && !shopName) { 
-        showToast('❌ Please enter a shop name!'); 
-        return; 
-    }
+    // Seller validation removed - direct role selection only
     
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     if (users.find(u => u.email === email)) { 
@@ -1924,7 +1945,7 @@ function handleSignup(e) {
     
     const userData = {
         firstName, lastName, fullName: firstName + ' ' + lastName,
-        email, phone, password, role, shopName: shopName || '',
+        email, phone, password, role, shopName: role === 'seller' ? firstName + "'s Shop" : '',
         address, city, birthday, gender,
         createdAt: new Date().toISOString()
     };
@@ -2684,5 +2705,15 @@ window.onclick = function(e) {
 }
 </script>
 
+<!-- Flash Sale Timer Reset (for testing) -->
+<button onclick="resetFlashSale()" style="position:fixed;bottom:10px;right:10px;z-index:9999;padding:5px 10px;font-size:12px;background:#333;color:white;border:none;border-radius:4px;cursor:pointer;opacity:0.7;">Reset Timer</button>
+<script>
+function resetFlashSale() {
+    flashSaleEndTime = Date.now() + (24 * 60 * 60 * 1000);
+    localStorage.setItem('flashSaleEndTime', flashSaleEndTime);
+    updateTimer();
+    alert('Flash sale timer reset to 24 hours!');
+}
+</script>
 </body>
 </html>
